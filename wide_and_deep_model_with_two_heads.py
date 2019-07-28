@@ -22,10 +22,11 @@ hidden1 = tf.keras.layers.Dense(30, activation="selu")(input_A)
 hidden2 = tf.keras.layers.Dense(20, activation="selu")(hidden1)
 concat = tf.keras.layers.concatenate([input_B, hidden2])
 output = tf.keras.layers.Dense(1)(concat)
-model = tf.keras.models.Model(inputs=[input_A, input_B], outputs=[output])
+aux_output = tf.keras.layers.Dense(1)(hidden2)
+model = tf.keras.models.Model(inputs=[input_A, input_B], outputs=[output, aux_output])
 
 # Plotting the model to file 
-tf.keras.utils.plot_model(model, to_file='wide_ande_deep_model1.png', show_shapes=True)
+tf.keras.utils.plot_model(model, to_file='wide_ande_deep_model_with_two_heads.png', show_shapes=True)
 
 # Preprocessing the data to input_A - features 0 to 4 (total 5)
 # and input_B - features 2 to 7 (total 6)
@@ -35,18 +36,30 @@ X_test_A, X_test_B = X_test_scaled[:, :5], X_test_scaled[:, 2:]
 X_new_A, X_new_B = X_test_A[:5], X_test_B[:5]
 
 # Compiling using huber loss
-model.compile(loss=tf.keras.losses.Huber(), optimizer="adam", metrics=["mse"])
+# Notice how two losses, their weights and two metrices are passed
+model.compile(loss=[tf.keras.losses.Huber(), "mse"], 
+              loss_weights=[0.5, 0.5],
+              optimizer="adam", 
+              metrics=["mse", "mse"])
 
-# training
-history = model.fit((X_train_A, X_train_B), y_train, 
-                    epochs=100,
-                    validation_data=((X_valid_A, X_valid_B), y_valid),
+# training 
+# Notice how two labels are provided for both the heads
+history = model.fit((X_train_A, X_train_B), (y_train, y_train), 
+                    epochs=50,
+                    validation_data=((X_valid_A, X_valid_B), (y_valid, y_valid)),
                     verbose=2, 
                     batch_size=128)
 
 # evaluating the mdoel
-mse_test = model.evaluate((X_test_A, X_test_B), y_test, verbose=2)
+# See how getting separate losses and combined loss
+total_loss, main_loss, aux_loss, main_mse, aux_mse = model.evaluate((X_test_A, X_test_B), (y_test, y_test), verbose=2)
+# x = model.evaluate((X_test_A, X_test_B), (y_test, y_test), verbose=2)
+print("total_loss:{}, main_loss:{}, aux_loss:{}, main_mse:{}, aux_mse:{}".\
+      format(total_loss, main_loss, aux_loss, main_mse, aux_mse))
+
+
 X_new = X_test[:5] # pretend these are new instances
-y_pred = model.predict((X_new_A, X_new_B))
-print("y_pred: ", y_pred.T[0].round(2))
+y_pred_main, y_pred_aux = model.predict((X_new_A, X_new_B))
+print("y_pred_main: ", y_pred_main.T[0].round(2))
+print("y_pred_aux: ", y_pred_aux.T[0].round(2))
 print("y_test: ", y_test[:5].round(2))

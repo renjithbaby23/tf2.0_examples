@@ -50,3 +50,33 @@ X_new = X_test[:5] # pretend these are new instances
 y_pred = model.predict((X_new_A, X_new_B))
 print("y_pred: ", y_pred.T[0].round(2))
 print("y_test: ", y_test[:5].round(2))
+
+
+# Saving and restoring models
+"""
+Keras will save both the model’s architecture (including every layer’s hyperparameters)
+ and the value of all the model parameters for every layer (e.g., connection
+weights and biases), using the HDF5 format. It also saves the optimizer (including its
+hyperparameters and any state it may have)
+
+This will work when using the Sequential API or the Functional API, 
+but unfortunately not when using Model subclassing. 
+However, you can use save_weights() and load_weights() to at least save and restore 
+the model parameters (but you will need to save and restore everything else yourself).
+
+model.to_json('my_model_architecture.json') --> saves only the architecture of the model
+model.save_weights('my_model_weights.h5') --> saves only the weights of the model
+loaded_model = tf.keras.models.model_from_json(json_string)
+loaded_model.load_weights('my_model_weights.h5') --> loads weights to the model
+
+"""
+model.save("results/wide_ande_deep_model.h5")
+
+loaded_model = tf.keras.models.load_model("results/wide_ande_deep_model.h5")
+
+# evaluating with the loaded mdoel
+mse_test = loaded_model.evaluate((X_test_A, X_test_B), y_test, verbose=2)
+X_new = X_test[:5] # pretend these are new instances
+y_pred = loaded_model.predict((X_new_A, X_new_B))
+print("y_pred: ", y_pred.T[0].round(2))
+print("y_test: ", y_test[:5].round(2))
