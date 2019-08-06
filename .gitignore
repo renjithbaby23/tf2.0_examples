@@ -2,3 +2,4 @@ data/
 logs/
 results/
 tfrecords/
+.ipynb_checkpoints/
